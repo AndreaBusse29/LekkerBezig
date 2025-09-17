@@ -35,7 +35,6 @@ body {
 
 .page-header {
     text-align: center;
-    padding: 60px 20px 30px 20px;
     background: white;
 }
 
@@ -188,6 +187,8 @@ footer {
     right: 0;
     background: white;
     border-top: 1px solid #e0e0e0;
+    max-width: 414px;
+    margin: 0 auto;
 }
 
 #status {
