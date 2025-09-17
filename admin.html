@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Lekker Bezig Orders</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #eee;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: #2196F3;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #eee;
+        }
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-size: 16px;
+            border-bottom: 3px solid transparent;
+        }
+        .tab.active {
+            border-bottom-color: #2196F3;
+            color: #2196F3;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .data-table th,
+        .data-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        .data-table th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+        .data-table tr:hover {
+            background-color: #f5f5f5;
+        }
+        .refresh-btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .refresh-btn:hover {
+            background: #45a049;
+        }
+        .selection-items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+        .selection-item {
+            background: #e3f2fd;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+        .order-status {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        /* Delete button styles */
+        .delete-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s ease;
+        }
+
+        .delete-btn:hover:not(:disabled) {
+            background: #c82333;
+            transform: translateY(-1px);
+        }
+
+        .delete-btn.disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .delete-btn.loading {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        /* Confirmation Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+            animation: slideIn 0.3s ease;
+        }
+
+        .modal-content h3 {
+            color: #dc3545;
+            margin-bottom: 15px;
+        }
+
+        .modal-content p {
+            margin-bottom: 25px;
+            color: #666;
+            line-height: 1.5;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .modal-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s ease;
+            min-width: 80px;
+        }
+
+        .modal-btn.confirm {
+            background: #dc3545;
+            color: white;
+        }
+
+        .modal-btn.confirm:hover {
+            background: #c82333;
+        }
+
+        .modal-btn.cancel {
+            background: #6c757d;
+            color: white;
+        }
+
+        .modal-btn.cancel:hover {
+            background: #5a6268;
+        }
+
+        /* Notification styles */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 4px;
+            color: white;
+            font-weight: 500;
+            z-index: 2000;
+            animation: slideInRight 0.3s ease;
+            max-width: 400px;
+        }
+
+        .notification.success {
+            background: #28a745;
+        }
+
+        .notification.error {
+            background: #dc3545;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideIn {
+            from { 
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+            to { 
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideInRight {
+            from { 
+                opacity: 0;
+                transform: translateX(100px);
+            }
+            to { 
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Lekker Bezig Admin Dashboard</h1>
+            <button class="refresh-btn" onclick="refreshData()">🔄 Refresh</button>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number" id="totalUsers">0</div>
+                <div>Total Users</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="totalOrders">0</div>
+                <div>Total Orders</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="totalSelections">0</div>
+                <div>Active Selections</div>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('selections')">User Selections</button>
+            <button class="tab" onclick="showTab('orders')">Submitted Orders</button>
+        </div>
+
+        <div id="selections" class="tab-content active">
+            <h2>Current User Selections</h2>
+            <div id="selectionsLoading" class="loading">Loading selections...</div>
+            <table class="data-table" id="selectionsTable" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>User ID</th>
+                        <th>User Name</th>
+                        <th>Selections</th>
+                        <th>Last Updated</th>
+                        <th>Order Submitted</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="selectionsBody">
+                </tbody>
+            </table>
+        </div>
+
+        <div id="orders" class="tab-content">
+            <h2>Submitted Orders</h2>
+            <div id="ordersLoading" class="loading">Loading orders...</div>
+            <table class="data-table" id="ordersTable" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>Order ID</th>
+                        <th>User Name</th>
+                        <th>Email</th>
+                        <th>Items</th>
+                        <th>Total</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                    </tr>
+                </thead>
+                <tbody id="ordersBody">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? 'http://localhost:3001/api'
+            : '/api';
+
+        async function loadSelections() {
+            try {
+                document.getElementById('selectionsLoading').style.display = 'block';
+                document.getElementById('selectionsTable').style.display = 'none';
+                
+                const response = await fetch(`${API_BASE_URL}/selections`);
+                const data = await response.json();
+                
+                document.getElementById('totalUsers').textContent = data.totalUsers;
+                document.getElementById('totalSelections').textContent = data.totalUsers;
+                
+                const tbody = document.getElementById('selectionsBody');
+                tbody.innerHTML = '';
+                
+                data.selections.forEach(selection => {
+                    const row = document.createElement('tr');
+                    
+                    const selectionItems = selection.selections.map(item => 
+                        `<span class="selection-item">${item.replace(/-/g, ' ')}</span>`
+                    ).join('');
+                    
+                    const deleteButton = selection.orderSubmitted 
+                        ? '<button class="delete-btn disabled" disabled title="Cannot delete - order already submitted">🚫 Submitted</button>'
+                        : `<button class="delete-btn" onclick="deleteUserSelection('${selection.userId}', '${selection.userName}')" title="Delete ${selection.userName}'s selection">🗑️ Delete</button>`;
+                    
+                    row.innerHTML = `
+                        <td>${selection.userId}</td>
+                        <td>${selection.userName}</td>
+                        <td><div class="selection-items">${selectionItems || 'No selections'}</div></td>
+                        <td>${new Date(selection.updatedAt).toLocaleString()}</td>
+                        <td>${selection.orderSubmitted ? '✅ Yes' : '❌ No'}</td>
+                        <td>${deleteButton}</td>
+                    `;
+                    
+                    tbody.appendChild(row);
+                });
+                
+                document.getElementById('selectionsLoading').style.display = 'none';
+                document.getElementById('selectionsTable').style.display = 'table';
+                
+            } catch (error) {
+                console.error('Failed to load selections:', error);
+                document.getElementById('selectionsLoading').textContent = 'Failed to load selections';
+            }
+        }
+
+        async function loadOrders() {
+            try {
+                document.getElementById('ordersLoading').style.display = 'block';
+                document.getElementById('ordersTable').style.display = 'none';
+                
+                const response = await fetch(`${API_BASE_URL}/orders`);
+                const data = await response.json();
+                
+                document.getElementById('totalOrders').textContent = data.totalOrders;
+                
+                const tbody = document.getElementById('ordersBody');
+                tbody.innerHTML = '';
+                
+                data.orders.forEach(order => {
+                    const row = document.createElement('tr');
+                    
+                    const orderItems = order.items.map(item => 
+                        `${item.name} (${item.units})`
+                    ).join(', ');
+                    
+                    row.innerHTML = `
+                        <td>${order.orderId}</td>
+                        <td>${order.userName}</td>
+                        <td>${order.email || 'N/A'}</td>
+                        <td>${orderItems}</td>
+                        <td>${order.totalAmount}</td>
+                        <td><span class="order-status status-${order.status}">${order.status}</span></td>
+                        <td>${new Date(order.createdAt).toLocaleString()}</td>
+                    `;
+                    
+                    tbody.appendChild(row);
+                });
+                
+                document.getElementById('ordersLoading').style.display = 'none';
+                document.getElementById('ordersTable').style.display = 'table';
+                
+            } catch (error) {
+                console.error('Failed to load orders:', error);
+                document.getElementById('ordersLoading').textContent = 'Failed to load orders';
+            }
+        }
+
+        function showTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected tab
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+            
+            // Load data for the selected tab
+            if (tabName === 'selections') {
+                loadSelections();
+            } else if (tabName === 'orders') {
+                loadOrders();
+            }
+        }
+
+        function refreshData() {
+            loadSelections();
+            loadOrders();
+        }
+
+        // Delete functionality
+        let pendingDeletion = null;
+
+        function deleteUserSelection(userId, userName) {
+            // Store the deletion info for later execution
+            pendingDeletion = { userId, userName };
+            
+            // Update modal message
+            document.getElementById('confirmationMessage').textContent = 
+                `Are you sure you want to delete ${userName}'s selection? This action cannot be undone.`;
+            
+            // Setup confirm button
+            const confirmBtn = document.getElementById('confirmDeleteBtn');
+            confirmBtn.onclick = confirmDeletion;
+            
+            // Show modal
+            showConfirmationModal();
+        }
+
+        function showConfirmationModal() {
+            const modal = document.getElementById('confirmationModal');
+            modal.classList.add('show');
+            
+            // Focus on cancel button for accessibility
+            modal.querySelector('.cancel').focus();
+        }
+
+        function closeConfirmationModal() {
+            const modal = document.getElementById('confirmationModal');
+            modal.classList.remove('show');
+            pendingDeletion = null;
+        }
+
+        async function confirmDeletion() {
+            if (!pendingDeletion) return;
+            
+            const { userId, userName } = pendingDeletion;
+            const confirmBtn = document.getElementById('confirmDeleteBtn');
+            
+            try {
+                // Show loading state
+                confirmBtn.textContent = 'Deleting...';
+                confirmBtn.disabled = true;
+                confirmBtn.classList.add('loading');
+                
+                // Make DELETE request
+                const response = await fetch(`${API_BASE_URL}/selections/${encodeURIComponent(userId)}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    // Success - close modal and refresh data
+                    closeConfirmationModal();
+                    showNotification(`Successfully deleted ${userName}'s selection`, 'success');
+                    
+                    // Refresh the selections table
+                    loadSelections();
+                    
+                } else {
+                    // Handle HTTP errors
+                    const errorData = await response.json().catch(() => ({}));
+                    const errorMessage = errorData.error || `Failed to delete selection (${response.status})`;
+                    throw new Error(errorMessage);
+                }
+                
+            } catch (error) {
+                console.error('Delete error:', error);
+                showNotification(`Error deleting ${userName}'s selection: ${error.message}`, 'error');
+                
+            } finally {
+                // Reset button state
+                confirmBtn.textContent = 'Delete';
+                confirmBtn.disabled = false;
+                confirmBtn.classList.remove('loading');
+            }
+        }
+
+        function showNotification(message, type = 'success') {
+            // Remove any existing notifications
+            document.querySelectorAll('.notification').forEach(n => n.remove());
+            
+            // Create new notification
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            
+            // Add to page
+            document.body.appendChild(notification);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 5000);
+        }
+
+        // Close modal when clicking outside
+        document.addEventListener('click', (e) => {
+            const modal = document.getElementById('confirmationModal');
+            if (e.target === modal) {
+                closeConfirmationModal();
+            }
+        });
+
+        // Close modal with Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeConfirmationModal();
+            }
+        });
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadSelections();
+            loadOrders();
+        });
+    </script>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmationModal" class="modal">
+        <div class="modal-content">
+            <h3>⚠️ Confirm Deletion</h3>
+            <p id="confirmationMessage">Are you sure you want to delete this user's selection?</p>
+            <div class="modal-buttons">
+                <button class="modal-btn cancel" onclick="closeConfirmationModal()">Cancel</button>
+                <button class="modal-btn confirm" id="confirmDeleteBtn">Delete</button>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

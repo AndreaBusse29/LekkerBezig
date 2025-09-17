@@ -1,0 +1,38 @@
+{
+  "name": "lekker-bezig-pwa",
+  "version": "1.0.0",
+  "description": "A PWA for ordering lunch on fridays",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve -s . -l 3000",
+    "build": "echo 'No build process needed for vanilla PWA'",
+    "dev": "npx serve -s . -l 3000",
+    "server": "node server.js",
+    "dev:server": "node server.js"
+  },
+  "keywords": [
+    "pwa",
+    "progressive-web-app",
+    "javascript"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "serve": "^14.2.1"
+  },
+  "dependencies": {
+    "@emailjs/browser": "^4.4.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-session": "^1.17.3",
+    "firebase": "^12.2.1",
+    "firebase-admin": "^12.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "node-cron": "^4.2.1",
+    "passport": "^0.6.0",
+    "passport-google-oauth20": "^2.0.0",
+    "sqlite3": "^5.1.7",
+    "web-push": "^3.6.7"
+  }
+}
