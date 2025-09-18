@@ -12,7 +12,13 @@ class FirestoreDatabase {
                 return;
             }
 
-            // Initialize Firebase Admin SDK
+        // export interface ServiceAccount
+        //     {
+        //         projectId ? : string
+        //         clientEmail ? : string
+        //         privateKey ? : string
+        //     }
+                // Initialize Firebase Admin SDK
             const serviceAccount = {
                 type: "service_account",
                 project_id: process.env.FIREBASE_PROJECT_ID,
@@ -26,11 +32,20 @@ class FirestoreDatabase {
                 client_x509_cert_url: `https://www.googleapis.com/robot/v1/metadata/x509/${process.env.FIREBASE_CLIENT_EMAIL}`
             };
 
+            console.log('admin.apps.length', admin.apps.length)
+
             if (!admin.apps.length) {
                 admin.initializeApp({
                     credential: admin.credential.cert(serviceAccount)
                 });
             }
+
+            // databaseAuthVariableOverride?: object | null
+            // databaseURL?: string
+            // serviceAccountId?: string
+            // storageBucket?: string
+            // projectId?: string
+            // httpAgent?: Agent
 
             this.db = admin.firestore();
             this.db.settings({ ignoreUndefinedProperties: true });
@@ -41,6 +56,7 @@ class FirestoreDatabase {
             await this.createCollections();
             
         } catch (error) {
+            console.log('admin.apps.length', admin.apps.length)
             console.error('Error initializing Firestore:', error.message);
             throw error;
         }
