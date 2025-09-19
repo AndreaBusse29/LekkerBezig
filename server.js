@@ -44,12 +44,21 @@ webpush.setVapidDetails(
 // Middleware
 app.use(cors({
     origin: process.env.NODE_ENV === 'production' 
-        ? ['https://your-production-domain.com'] 
+        ? ['https://lekkerbezig-3fffa.web.app']
         : ['http://localhost:3000', 'http://localhost:3001'],
     credentials: true
 }));
 
 app.use(express.json());
+
+// Custom static file handler to protect admin.html
+app.use((req, res, next) => {
+    if (req.path === '/admin.html') {
+        return res.redirect('/admin');
+    }
+    next();
+});
+
 app.use(express.static('.'));
 
 // Session configuration
@@ -138,6 +147,37 @@ app.get('/auth/user', isAuthenticated, (req, res) => {
     });
 });
 
+// Protected Admin Dashboard Route
+app.get('/admin', isAuthenticated, (req, res) => {
+    const fs = require('fs');
+    const path = require('path');
+    
+    try {
+        // Read the admin.html file
+        const adminHtmlPath = path.join(__dirname, 'admin.html');
+        let adminHtml = fs.readFileSync(adminHtmlPath, 'utf8');
+        
+        // Inject user information and authentication token into the HTML
+        const userScript = `
+        <script>
+            window.AUTHENTICATED_USER = {
+                id: '${req.user.id}',
+                name: '${req.user.name}',
+                email: '${req.user.email}',
+                domain: '${req.user.domain}'
+            };
+        </script>`;
+        
+        // Insert the script before the closing head tag
+        adminHtml = adminHtml.replace('</head>', userScript + '\n</head>');
+        
+        res.send(adminHtml);
+    } catch (error) {
+        console.error('Error serving admin dashboard:', error);
+        res.status(500).send('Error loading admin dashboard');
+    }
+});
+
 // API Routes (Protected - require authentication)
 app.post('/api/selections', isAuthenticated, async (req, res) => {
     try {
@@ -185,8 +225,8 @@ app.get('/api/selections/:userId', isAuthenticated, async (req, res) => {
     }
 });
 
-// Get all selections (for admin/summary view)
-app.get('/api/selections', async (req, res) => {
+// Get all selections (admin only - protected)
+app.get('/api/selections', isAuthenticated, async (req, res) => {
     try {
         const selections = await db.getAllSelections();
         const stats = await db.getStats();
@@ -201,14 +241,16 @@ app.get('/api/selections', async (req, res) => {
     }
 });
 
-// Delete user selection (admin only)
-app.delete('/api/selections/:userId', async (req, res) => {
+// Delete user selection (admin only - protected)
+app.delete('/api/selections/:userId', isAuthenticated, async (req, res) => {
     try {
         const { userId } = req.params;
         
         if (!userId) {
             return res.status(400).json({ error: 'User ID is required' });
         }
+        
+        console.log(`Admin ${req.user.email} deleting selection for user: ${userId}`);
         
         const deleted = await db.deleteUserSelection(userId);
         
@@ -255,8 +297,8 @@ app.post('/api/orders', isAuthenticated, async (req, res) => {
     }
 });
 
-// Get all orders
-app.get('/api/orders', async (req, res) => {
+// Get all orders (admin only - protected)
+app.get('/api/orders', isAuthenticated, async (req, res) => {
     try {
         const orders = await db.getAllOrders();
         
@@ -459,30 +501,123 @@ app.get('/', (req, res) => {
 // Initialize database and start server
 async function startServer() {
     try {
-        await db.initialize();
-        console.log('Database initialized successfully');
+        console.log(`Starting server in ${process.env.NODE_ENV || 'development'} mode...`);
         
-        app.listen(PORT, () => {
-            console.log(`Server running on http://localhost:${PORT}`);
-            console.log(`API available at http://localhost:${PORT}/api/`);
-            console.log(`Admin dashboard at http://localhost:${PORT}/admin.html`);
+        // Validate required environment variables
+        const requiredEnvVars = [
+            'GOOGLE_CLIENT_ID',
+            'GOOGLE_CLIENT_SECRET',
+            'SESSION_SECRET',
+            'JWT_SECRET',
+            'FIREBASE_PROJECT_ID',
+            'FIREBASE_PRIVATE_KEY',
+            'FIREBASE_CLIENT_EMAIL'
+        ];
+
+        const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);
+        
+        if (missingEnvVars.length > 0) {
+            console.error('❌ Missing required environment variables:');
+            missingEnvVars.forEach(varName => console.error(`   - ${varName}`));
+            console.error('   Please check your .env file configuration.');
+            process.exit(1);
+        }
+
+        await db.initialize();
+        console.log('✅ Database initialized successfully');
+        
+        // Start server
+        server = app.listen(PORT, () => {
+            const isProduction = process.env.NODE_ENV === 'production';
+            const host = isProduction ? process.env.PRODUCTION_DOMAIN || 'lekkerbezig-3fffa.web.app' : 'localhost';
+            const protocol = isProduction ? 'https' : 'http';
+            
+            console.log('🚀 Server started successfully!');
+            console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
+            console.log(`   Port: ${PORT}`);
+            
+            if (isProduction) {
+                console.log(`   🌐 Production URL: ${protocol}://${host}`);
+                console.log(`   📡 API: ${protocol}://${host}/api/`);
+                console.log(`   ⚙️  Admin: ${protocol}://${host}/admin`);
+            } else {
+                console.log(`   🏠 Local URL: http://localhost:${PORT}`);
+                console.log(`   📡 API: http://localhost:${PORT}/api/`);
+                console.log(`   ⚙️  Admin: http://localhost:${PORT}/admin`);
+            }
+            
+            console.log('');
+            console.log('📋 Configuration Status:');
+            console.log(`   ✅ Google OAuth: ${process.env.GOOGLE_CLIENT_ID ? 'Configured' : '❌ Missing'}`);
+            console.log(`   ✅ Firebase: ${process.env.FIREBASE_PROJECT_ID ? 'Configured' : '❌ Missing'}`);
+            console.log(`   ✅ VAPID Keys: ${vapidKeys.publicKey ? 'Configured' : '❌ Missing'}`);
+            console.log(`   ${process.env.EMAILJS_PUBLIC_KEY ? '✅' : '⚠️ '} EmailJS: ${process.env.EMAILJS_PUBLIC_KEY ? 'Configured' : 'Not configured (optional)'}`);
         });
+
+        // Handle server errors
+        server.on('error', (error) => {
+            if (error.code === 'EADDRINUSE') {
+                console.error(`❌ Port ${PORT} is already in use`);
+                console.log('   Try killing existing processes or use a different port');
+            } else {
+                console.error('❌ Server error:', error.message);
+            }
+            process.exit(1);
+        });
+
     } catch (error) {
-        console.error('Failed to initialize database:', error);
+        console.error('❌ Failed to start server:', error.message);
+        if (error.message.includes('Firebase') || error.message.includes('Firestore')) {
+            console.error('   Please check your Firebase configuration in .env file');
+        }
         process.exit(1);
     }
 }
 
 // Handle graceful shutdown
+let server;
+
 process.on('SIGINT', async () => {
-    console.log('Shutting down server...');
+    console.log('\n🛑 Shutting down server...');
     try {
+        // Close server first
+        if (server) {
+            await new Promise((resolve) => {
+                server.close(resolve);
+            });
+            console.log('✅ Server closed');
+        }
+        
+        // Close database connection
         await db.close();
+        console.log('✅ Database connection closed');
+        
+        console.log('👋 Server shutdown complete');
         process.exit(0);
     } catch (error) {
-        console.error('Error during shutdown:', error);
+        console.error('❌ Error during shutdown:', error);
         process.exit(1);
     }
 });
 
-startServer();
+process.on('SIGTERM', async () => {
+    console.log('\n🛑 Received SIGTERM, shutting down gracefully...');
+    process.emit('SIGINT');
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+    console.error('❌ Uncaught Exception:', error);
+    process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+    process.exit(1);
+});
+
+// Start the server
+startServer().catch((error) => {
+    console.error('❌ Failed to start server:', error);
+    process.exit(1);
+});

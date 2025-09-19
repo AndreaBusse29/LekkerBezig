@@ -280,8 +280,14 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>Lekker Bezig Admin Dashboard</h1>
-            <button class="refresh-btn" onclick="refreshData()">🔄 Refresh</button>
+            <div>
+                <h1>Lekker Bezig Admin Dashboard</h1>
+                <div id="userInfo" style="font-size: 14px; color: #666; margin-top: 5px;"></div>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button class="refresh-btn" onclick="refreshData()">🔄 Refresh</button>
+                <button class="refresh-btn" onclick="logout()" style="background: #dc3545;">🚪 Logout</button>
+            </div>
         </div>
 
         <div class="stats">
@@ -354,7 +360,15 @@
                 document.getElementById('selectionsLoading').style.display = 'block';
                 document.getElementById('selectionsTable').style.display = 'none';
                 
-                const response = await fetch(`${API_BASE_URL}/selections`);
+                const response = await fetch(`${API_BASE_URL}/selections`, {
+                    credentials: 'include'
+                });
+                
+                if (response.status === 401) {
+                    window.location.href = '/auth/google';
+                    return;
+                }
+                
                 const data = await response.json();
                 
                 document.getElementById('totalUsers').textContent = data.totalUsers;
@@ -400,7 +414,15 @@
                 document.getElementById('ordersLoading').style.display = 'block';
                 document.getElementById('ordersTable').style.display = 'none';
                 
-                const response = await fetch(`${API_BASE_URL}/orders`);
+                const response = await fetch(`${API_BASE_URL}/orders`, {
+                    credentials: 'include'
+                });
+                
+                if (response.status === 401) {
+                    window.location.href = '/auth/google';
+                    return;
+                }
+                
                 const data = await response.json();
                 
                 document.getElementById('totalOrders').textContent = data.totalOrders;
@@ -513,7 +535,8 @@
                     method: 'DELETE',
                     headers: {
                         'Content-Type': 'application/json'
-                    }
+                    },
+                    credentials: 'include'
                 });
                 
                 if (response.ok) {
@@ -524,6 +547,10 @@
                     // Refresh the selections table
                     loadSelections();
                     
+                } else if (response.status === 401) {
+                    // Authentication failed, redirect to login
+                    window.location.href = '/auth/google';
+                    return;
                 } else {
                     // Handle HTTP errors
                     const errorData = await response.json().catch(() => ({}));
@@ -578,8 +605,36 @@
             }
         });
 
+        // Logout function
+        async function logout() {
+            try {
+                const response = await fetch('/auth/logout', {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    window.location.href = '/';
+                } else {
+                    showNotification('Logout failed', 'error');
+                }
+            } catch (error) {
+                console.error('Logout error:', error);
+                showNotification('Logout failed', 'error');
+            }
+        }
+
+        // Display user information
+        function displayUserInfo() {
+            if (window.AUTHENTICATED_USER) {
+                const userInfo = document.getElementById('userInfo');
+                userInfo.textContent = `Logged in as: ${window.AUTHENTICATED_USER.name} (${window.AUTHENTICATED_USER.email})`;
+            }
+        }
+
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
+            displayUserInfo();
             loadSelections();
             loadOrders();
         });
